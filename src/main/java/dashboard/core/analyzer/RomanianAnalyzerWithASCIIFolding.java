@@ -13,6 +13,8 @@ import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.standard.StandardFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import org.tartarus.snowball.ext.RomanianStemmer;
 
@@ -27,6 +29,7 @@ import java.util.Scanner;
  * Created by Ionut Emanuel Mihailescu on 3/24/18.
  */
 @Component
+@Scope(value = BeanDefinition.SCOPE_PROTOTYPE)
 public class RomanianAnalyzerWithASCIIFolding extends StopwordAnalyzerBase {
     public static final String ERROR_WHILE_LOADING_STOPWORDS = "Error while loading the stopwords: %s";
     private static final Logger LOGGER = Logger.getLogger(RomanianAnalyzerWithASCIIFolding.class);

@@ -1,6 +1,7 @@
 package dashboard.core;
 
 import dashboard.resource.SearchResult;
+import dashboard.service.HighlighterService;
 import dashboard.utils.Constants;
 import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
@@ -8,8 +9,8 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.highlight.InvalidTokenOffsetsException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +43,9 @@ public class Searcher {
 
     @Autowired
     private Indexer indexer;
+
+    @Autowired
+    private HighlighterService highlighterService;
 
     private IndexSearcher indexSearcher;
 
@@ -71,12 +76,12 @@ public class Searcher {
             if(Objects.nonNull(hits)){
 
                 addSearchDetails(searchResult, SUCCESS, hits.scoreDocs.length);
-                addDocumentsDetails(searchResult, hits);
+                addDocumentsDetails(searchResult, hits, query);
 
             } else {
                 addSearchDetails(searchResult, SUCCESS, ZERO);
             }
-        } catch (ParseException | IOException e) {
+        } catch (ParseException | IOException | InvalidTokenOffsetsException e) {
             LOGGER.error(String.format(SEARCH_ERROR, query, e));
             addSearchDetails(searchResult, ERROR, ZERO);
         }
@@ -89,15 +94,28 @@ public class Searcher {
         searchResult.addSearchDetail(RESULTS_COUNT, String.valueOf(resultCount));
     }
 
-    private void addDocumentsDetails(SearchResult searchResult, TopDocs hits) throws IOException {
-        for (ScoreDoc scoreDoc : hits.scoreDocs){
-            Document document = indexSearcher.getIndexReader().document(scoreDoc.doc);
+    private void addDocumentsDetails(SearchResult searchResult, TopDocs hits, String query)
+            throws IOException, ParseException, InvalidTokenOffsetsException {
 
-            Map<String, String> documentDetails = new HashMap<>();
-            documentDetails.put(Constants.CONTENT, document.get(Constants.CONTENT));
-            documentDetails.put(Constants.FILE_NAME, document.get(Constants.FILE_NAME));
+        Arrays.stream(hits.scoreDocs).sorted((o1, o2) -> Math.round(o1.score-o2.score))
+                .forEachOrdered(hit -> {
+                    try {
+                        Document document = indexSearcher.getIndexReader().document(hit.doc);
 
-            searchResult.getSearchResults().add(documentDetails);
-        }
+                        String highlightedFragments = highlighterService.getHighlightedFragments(document, query);
+
+                        Map<String, String> documentDetails = new HashMap<>();
+                        documentDetails.put(Constants.CONTENT, highlightedFragments);
+                        documentDetails.put(Constants.FILE_NAME, document.get(Constants.FILE_NAME));
+
+                        searchResult.getSearchResults().add(documentDetails);
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
     }
+
+
 }
+

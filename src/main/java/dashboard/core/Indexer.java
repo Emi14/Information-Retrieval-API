@@ -15,7 +15,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.tika.Tika;
 import org.apache.tika.exception.TikaException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -49,13 +48,14 @@ public class Indexer implements AutoCloseable{
     @Value("${documents.directory.path}")
     private String documentsDirectoryPath;
 
-    @Autowired
-    private RomanianAnalyzerWithASCIIFolding romanianAnalyzerWithASCIIFolding;
+//    @Autowired
+//    private RomanianAnalyzerWithASCIIFolding romanianAnalyzerWithASCIIFolding;
 
     @PostConstruct
     private void createIndexWriter() throws IOException {
         Directory indexDirectory = FSDirectory.open(Paths.get(indexDirectoryPath));
-        RomanianAnalyzerWithASCIIFolding romanianAnalyzer = romanianAnalyzerWithASCIIFolding;
+//        RomanianAnalyzerWithASCIIFolding romanianAnalyzer = romanianAnalyzerWithASCIIFolding;
+        RomanianAnalyzerWithASCIIFolding romanianAnalyzer = new RomanianAnalyzerWithASCIIFolding();
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(romanianAnalyzer);
         indexWriter = new IndexWriter(indexDirectory, indexWriterConfig);
         buildIndex(documentsDirectoryPath);

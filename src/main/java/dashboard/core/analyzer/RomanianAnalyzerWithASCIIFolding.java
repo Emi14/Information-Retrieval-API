@@ -2,10 +2,10 @@ package dashboard.core.analyzer;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.StopFilter;
-import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
@@ -13,9 +13,6 @@ import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.standard.StandardFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
 import org.tartarus.snowball.ext.RomanianStemmer;
 
 import javax.annotation.PostConstruct;
@@ -28,17 +25,21 @@ import java.util.Scanner;
 /**
  * Created by Ionut Emanuel Mihailescu on 3/24/18.
  */
-@Component
-@Scope(value = BeanDefinition.SCOPE_PROTOTYPE)
-public class RomanianAnalyzerWithASCIIFolding extends StopwordAnalyzerBase {
+//@Component
+//@Scope(value = BeanDefinition.SCOPE_PROTOTYPE)
+public class RomanianAnalyzerWithASCIIFolding extends Analyzer {
     public static final String ERROR_WHILE_LOADING_STOPWORDS = "Error while loading the stopwords: %s";
     private static final Logger LOGGER = Logger.getLogger(RomanianAnalyzerWithASCIIFolding.class);
     CharArraySet stopwords;
     @Value("${stopwords.path}")
-    private String stopwordsPath;
+    private String stopwordsPath="/Users/ionutmihailescu/My stuff/InformationRetrievalApi/src/main/resources/stopwords.txt";
 
     @PostConstruct
     public void init(){
+        this.stopwords = loadStopwords();
+    }
+
+    public RomanianAnalyzerWithASCIIFolding(){
         this.stopwords = loadStopwords();
     }
 
@@ -52,12 +53,6 @@ public class RomanianAnalyzerWithASCIIFolding extends StopwordAnalyzerBase {
         result = new SnowballFilter(result, new RomanianStemmer());
 
         return new TokenStreamComponents(source, result);
-    }
-
-    protected TokenStream normalize(String fieldName, TokenStream in) {
-        TokenStream result = new StandardFilter(in);
-        result = new LowerCaseFilter(result);
-        return result;
     }
 
     private CharArraySet loadStopwords() {

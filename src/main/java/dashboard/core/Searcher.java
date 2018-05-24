@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Created by Ionut Emanuel Mihailescu on 3/19/18.
@@ -101,7 +102,11 @@ public class Searcher {
                 .forEachOrdered(hit -> {
                     try {
                         Document document = indexSearcher.getIndexReader().document(hit.doc);
-
+                        System.out.println(Arrays.stream(document.get(Constants.CONTENT)
+                                .replace("\n"," ")
+                                .split(" "))
+                                .filter(word -> word.toLowerCase().equals("mama"))
+                                .collect(Collectors.toList()).size());
                         String highlightedFragments = highlighterService.getHighlightedFragments(document, query);
 
                         Map<String, String> documentDetails = new HashMap<>();

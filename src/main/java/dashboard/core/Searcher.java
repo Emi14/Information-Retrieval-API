@@ -6,6 +6,9 @@ import dashboard.utils.Constants;
 import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
@@ -13,6 +16,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.highlight.InvalidTokenOffsetsException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.BytesRef;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
@@ -22,9 +26,9 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * Created by Ionut Emanuel Mihailescu on 3/19/18.
@@ -71,7 +75,20 @@ public class Searcher {
 
         SearchResult searchResult = new SearchResult();
 
+        double numDocs = indexSearcher.getIndexReader().numDocs();
+        String[] searchTerms = query.toLowerCase().split(" ");
+
+        StringBuilder idf = new StringBuilder();
+
         try {
+            for (String word: searchTerms){
+                TopDocs hits = executeQuery(word);
+
+                idf.append(word).append(" -> ").append(Math.log10(numDocs/(double)hits.totalHits)).append("\n");
+            }
+
+            System.out.println(idf);
+
             TopDocs hits = executeQuery(query);
 
             if(Objects.nonNull(hits)){
@@ -98,20 +115,52 @@ public class Searcher {
     private void addDocumentsDetails(SearchResult searchResult, TopDocs hits, String query)
             throws IOException, ParseException, InvalidTokenOffsetsException {
 
+        String[] searchTerms = query.toLowerCase().split(" ");
+
         Arrays.stream(hits.scoreDocs).sorted((o1, o2) -> Math.round(o1.score-o2.score))
                 .forEachOrdered(hit -> {
                     try {
                         Document document = indexSearcher.getIndexReader().document(hit.doc);
-                        System.out.println(Arrays.stream(document.get(Constants.CONTENT)
+
+
+
+                        StringBuilder tf = new StringBuilder();
+
+                        List<String> documentContent = Arrays.asList(document.get(Constants.CONTENT)
                                 .replace("\n"," ")
-                                .split(" "))
-                                .filter(word -> word.toLowerCase().equals("mama"))
-                                .collect(Collectors.toList()).size());
+                                .toLowerCase()
+                                .split(" "));
+
+                        Map<String, Integer> documentWords = new HashMap<>();
+                        Terms terms = indexSearcher.getIndexReader().getTermVector(hit.doc, Constants.CONTENT);
+                        TermsEnum termsEnum = terms.iterator();
+                        BytesRef term = null;
+                        PostingsEnum postings = null;
+                        while ((term = termsEnum.next())!=null){
+                            String termText = term.utf8ToString();
+                            postings = termsEnum.postings(postings, PostingsEnum.FREQS);
+                            postings.nextDoc();
+                            int freq = postings.freq();
+                            documentWords.put(termText, freq);
+                        }
+                        for (String word: searchTerms){
+
+                            tf.append(word).append(" -> ");
+                            Integer counter = documentWords.get(word.substring(0,word.length()-1));
+                            if(Objects.isNull(counter)){
+                                tf.append(0);
+                            } else {
+                                tf.append(1+Math.log10(counter));
+                            }
+                            tf.append("\n");
+                        }
+
                         String highlightedFragments = highlighterService.getHighlightedFragments(document, query);
 
                         Map<String, String> documentDetails = new HashMap<>();
                         documentDetails.put(Constants.CONTENT, highlightedFragments);
                         documentDetails.put(Constants.FILE_NAME, document.get(Constants.FILE_NAME));
+                        documentDetails.put("TF", tf.toString());
 
                         searchResult.getSearchResults().add(documentDetails);
 

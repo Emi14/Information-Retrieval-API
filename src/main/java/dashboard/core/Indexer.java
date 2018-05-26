@@ -7,8 +7,9 @@ import lombok.Getter;
 import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
@@ -65,7 +66,14 @@ public class Indexer implements AutoCloseable{
     private Document buildDocument(File file) {
         Document document = new Document();
 
-        document.add(new TextField(Constants.CONTENT, getContentFromFile(file), Field.Store.YES));
+        FieldType fieldType = new FieldType();
+        fieldType.setStored(true);
+        fieldType.setStoreTermVectors(true);
+        fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+
+
+        document.add(new Field(Constants.CONTENT, getContentFromFile(file), fieldType));
+//        document.add(new TextField(Constants.CONTENT, getContentFromFile(file), Field.Store.YES));
         document.add(new StringField(Constants.FILE_NAME, file.getName(), Field.Store.YES));
         document.add(new StringField(Constants.PATH, file.getAbsolutePath(), Field.Store.YES));
 

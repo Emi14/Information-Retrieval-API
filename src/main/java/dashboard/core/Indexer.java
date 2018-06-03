@@ -7,15 +7,15 @@ import lombok.Getter;
 import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.tika.Tika;
 import org.apache.tika.exception.TikaException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -31,16 +31,15 @@ import java.util.Objects;
  */
 @Component
 @Getter
-public class Indexer implements AutoCloseable{
+public class Indexer implements AutoCloseable {
+    public static final String EMPTY_STRING = "";
     private static final Logger LOGGER = Logger.getLogger(Indexer.class);
-
     private static final String ADDING_FILE_TO_INDEX = "Adding file %s to index.";
     private static final String BUILDING_THE_INDEX = "Starting building the index.";
     private static final String EMPTY_DIRECTORY_ERROR =
             "Empty directory, nothing to index. Please, provide another directory.";
     private static final String INDEX_BUILD_SUCCESS = "Index build successfully. %d documents were been added.";
     private static final String PARSING_ERROR = "Error while parsing the file %s";
-
     private IndexWriter indexWriter;
 
     @Value("${index.directory.path}")
@@ -49,13 +48,10 @@ public class Indexer implements AutoCloseable{
     @Value("${documents.directory.path}")
     private String documentsDirectoryPath;
 
-    @Autowired
-    private RomanianAnalyzerWithASCIIFolding romanianAnalyzerWithASCIIFolding;
-
     @PostConstruct
     private void createIndexWriter() throws IOException {
         Directory indexDirectory = FSDirectory.open(Paths.get(indexDirectoryPath));
-        RomanianAnalyzerWithASCIIFolding romanianAnalyzer = romanianAnalyzerWithASCIIFolding;
+        RomanianAnalyzerWithASCIIFolding romanianAnalyzer = new RomanianAnalyzerWithASCIIFolding();
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(romanianAnalyzer);
         indexWriter = new IndexWriter(indexDirectory, indexWriterConfig);
         buildIndex(documentsDirectoryPath);
@@ -65,19 +61,28 @@ public class Indexer implements AutoCloseable{
     private Document buildDocument(File file) {
         Document document = new Document();
 
-        document.add(new TextField(Constants.CONTENT, getContentFromFile(file), Field.Store.YES));
-        document.add(new StringField(Constants.FILE_NAME, file.getName(), Field.Store.YES));
-        document.add(new StringField(Constants.PATH, file.getAbsolutePath(), Field.Store.YES));
+        FieldType fieldType = new FieldType();
+        fieldType.setStored(true);
+        fieldType.setStoreTermVectors(true);
+        fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+
+        enrichDocument(file, document, fieldType);
 
         return document;
     }
 
+    private void enrichDocument(File file, Document document, FieldType fieldType) {
+        document.add(new Field(Constants.CONTENT, getContentFromFile(file), fieldType));
+        document.add(new StringField(Constants.FILE_NAME, file.getName(), Field.Store.YES));
+        document.add(new StringField(Constants.PATH, file.getAbsolutePath(), Field.Store.YES));
+    }
+
     private String getContentFromFile(File file) {
         Tika tika = new Tika();
-        String parsedFile = "";
+        String parsedFile = EMPTY_STRING;
         try {
             parsedFile = tika.parseToString(file);
-        } catch (TikaException | IOException e ) {
+        } catch (TikaException | IOException e) {
             LOGGER.error(String.format(PARSING_ERROR, e));
         }
         return parsedFile;
@@ -94,7 +99,7 @@ public class Indexer implements AutoCloseable{
 
         File[] files = new File(directoryPathToBeIndexed).listFiles();
 
-        if(Objects.isNull(files)){
+        if (Objects.isNull(files)) {
             LOGGER.error(EMPTY_DIRECTORY_ERROR);
         } else {
             for (File file : files) {
@@ -110,8 +115,7 @@ public class Indexer implements AutoCloseable{
     }
 
     private boolean isProcessableFile(File file) {
-        //todo add file type verification
-        return file.canRead() && file.exists() ;
+        return file.canRead() && file.exists();
     }
 
     @PreDestroy

@@ -15,11 +15,11 @@ import java.util.Map;
 @Setter
 public class SearchResult {
 
-   private Map<String, String> searchDetails = new HashMap<>();
-   private List<Map<String, String>> searchResults = new ArrayList<>();
+    private Map<String, String> searchDetails = new HashMap<>();
+    private List<Map<String, String>> searchResults = new ArrayList<>();
 
-   public void addSearchDetail(String key, String value){
-       this.searchDetails.put(key,value);
-   }
+    public void addSearchDetail(String key, String value) {
+        this.searchDetails.put(key, value);
+    }
 
 }

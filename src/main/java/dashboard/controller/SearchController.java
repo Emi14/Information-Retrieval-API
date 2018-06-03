@@ -21,7 +21,7 @@ public class SearchController {
     private Searcher searcher;
 
     @RequestMapping(value = "/singleQuery", method = RequestMethod.GET)
-    public ResponseEntity<SearchResult> searchForQuery(@RequestParam String query){
+    public ResponseEntity<SearchResult> searchForQuery(@RequestParam String query) {
         return new ResponseEntity<>(searcher.search(query), HttpStatus.OK);
     }
 

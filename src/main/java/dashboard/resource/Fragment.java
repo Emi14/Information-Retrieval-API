@@ -19,7 +19,7 @@ public class Fragment {
     private String text;
     private Set<String> terms = new HashSet<>();
 
-    public int getTermsSize(){
+    public int getTermsSize() {
         return terms.size();
     }
 

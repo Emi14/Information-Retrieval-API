@@ -12,7 +12,6 @@ import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.standard.StandardFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
-import org.springframework.beans.factory.annotation.Value;
 import org.tartarus.snowball.ext.RomanianStemmer;
 
 import javax.annotation.PostConstruct;
@@ -22,24 +21,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
+import static dashboard.utils.Constants.stopwordsPath;
+
 /**
  * Created by Ionut Emanuel Mihailescu on 3/24/18.
  */
-//@Component
-//@Scope(value = BeanDefinition.SCOPE_PROTOTYPE)
 public class RomanianAnalyzerWithASCIIFolding extends Analyzer {
     public static final String ERROR_WHILE_LOADING_STOPWORDS = "Error while loading the stopwords: %s";
     private static final Logger LOGGER = Logger.getLogger(RomanianAnalyzerWithASCIIFolding.class);
     CharArraySet stopwords;
-    @Value("${stopwords.path}")
-    private String stopwordsPath="/Users/ionutmihailescu/My stuff/InformationRetrievalApi/src/main/resources/stopwords.txt";
 
-    @PostConstruct
-    public void init(){
+    public RomanianAnalyzerWithASCIIFolding() {
         this.stopwords = loadStopwords();
     }
 
-    public RomanianAnalyzerWithASCIIFolding(){
+    @PostConstruct
+    public void init() {
         this.stopwords = loadStopwords();
     }
 
@@ -67,10 +64,10 @@ public class RomanianAnalyzerWithASCIIFolding extends Analyzer {
             }
 
         } catch (IOException e) {
-            LOGGER.error(String.format(ERROR_WHILE_LOADING_STOPWORDS,e));
+            LOGGER.error(String.format(ERROR_WHILE_LOADING_STOPWORDS, e));
         }
 
-        CharArraySet stopwords = new CharArraySet(stopWordsAsStrings,false);
+        CharArraySet stopwords = new CharArraySet(stopWordsAsStrings, false);
 
         return stopwords;
     }

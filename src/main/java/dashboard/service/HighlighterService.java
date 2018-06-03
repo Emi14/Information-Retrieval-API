@@ -42,7 +42,7 @@ public class HighlighterService {
     private static final String COLON = ":";
     private static final String END_OF_LINE = "\n";
 
-    public String getHighlightedFragments (Document document, String searchQuery) throws IOException {
+    public String getHighlightedFragments(Document document, String searchQuery) throws IOException {
         String result = SPACE_STRING;
 
         Query query = initQuery(searchQuery);
@@ -62,14 +62,14 @@ public class HighlighterService {
             while (tokenStream.incrementToken()) {
                 String term = charTermAttribute.toString();
 
-                if(clauses.contains(term)) {
+                if (clauses.contains(term)) {
                     fragments.add(buildFragment(offsetAttribute, content, clauses, term));
                 }
             }
             endAndCloseToken(tokenStream);
 
-             if (fragments.size() > 0){
-                result = buildResultFromBestFragments(mergeFragments(fragments,content), clauses);
+            if (fragments.size() > 0) {
+                result = buildResultFromBestFragments(mergeFragments(fragments, content), clauses);
             }
         }
 
@@ -82,7 +82,7 @@ public class HighlighterService {
         boolean first = true;
         List<Fragment> finalFragments = new ArrayList<>();
 
-        for(Fragment fragment : fragments) {
+        for (Fragment fragment : fragments) {
             Map<String, Integer> results = getHighlightedBestTokens(fragment, clauses);
 
             StringBuilder fragmentBuilder = new StringBuilder();
@@ -92,7 +92,7 @@ public class HighlighterService {
 
             String beforeWords;
             int position = 0;
-            int newStartOffset = 0;
+            int newStart = 0;
             for (String word : fragment.getText().split(SPACE_STRING)) {
                 TokenStream tokenStream = new RomanianAnalyzerWithASCIIFolding().tokenStream(null,
                         new StringReader(word));
@@ -100,14 +100,14 @@ public class HighlighterService {
 
                 resetAndIncrementToken(tokenStream);
                 String term = charTermAttribute.toString();
-                if (clauses.contains(term) && !checkedTerms.contains(term) && results.get(term).equals(position) ) {
+                if (clauses.contains(term) && !checkedTerms.contains(term) && results.get(term).equals(position)) {
                     checkedTerms.add(term);
                     existTerm = true;
                     fragment.getTerms().remove(term);
 
-                    if(!finishFirst) {
+                    if (!finishFirst) {
                         finishFirst = true;
-                        newStartOffset = String.join(SPACE_STRING, firstWords.subList(0,Math.max(firstWords.size() -
+                        newStart = String.join(SPACE_STRING, firstWords.subList(0, Math.max(firstWords.size() -
                                 Constants.CONTEXT_WINDOW_LENGTH, 0))).length();
                         firstWords = firstWords.subList(Math.max(firstWords.size() -
                                 Constants.CONTEXT_WINDOW_LENGTH, 0), firstWords.size());
@@ -118,7 +118,7 @@ public class HighlighterService {
                         fragmentBuilder.append(getBoldWord(word));
                     }
                 } else {
-                    if(!finishFirst) {
+                    if (!finishFirst) {
                         firstWords.add(word);
                     } else {
                         fragmentBuilder.append(word)
@@ -131,8 +131,8 @@ public class HighlighterService {
 
             if (existTerm) {
                 fragment.setText(fragmentBuilder.toString());
-                if(newStartOffset > 0) {
-                    fragment.setStartOffset(newStartOffset);
+                if (newStart > 0) {
+                    fragment.setStartOffset(newStart);
                 }
             }
             finalFragments.add(fragment);
@@ -140,7 +140,7 @@ public class HighlighterService {
 
         finalFragments.sort(Comparator.comparingInt(Fragment::getStartOffset));
 
-        for (Fragment context:finalFragments) {
+        for (Fragment context : finalFragments) {
             if (first && context.getStartOffset() > 0) {
                 first = addDelimiter(finalResult);
             }
@@ -158,32 +158,31 @@ public class HighlighterService {
         return false;
     }
 
-    private String getBoldWord(String word){
+    private String getBoldWord(String word) {
         return START_BOLD + word + END_BOLD;
     }
 
     private List<Fragment> mergeFragments(List<Fragment> fragments, String content) {
         List<Fragment> mergedFragments = new ArrayList<>();
 
-        int startOffset = 0;
-        int endOffset = 0;
+        int start = 0;
+        int end = 0;
         for (Fragment fragment : fragments) {
-            if (fragment.getStartOffset() <= endOffset) {
-                startOffset = Math.min(startOffset, fragment.getStartOffset());
-                endOffset = Math.max(endOffset, fragment.getEndOffset());
+            if (fragment.getStartOffset() <= end) {
+                start = Math.min(start, fragment.getStartOffset());
+                end = Math.max(end, fragment.getEndOffset());
 
-                Fragment mergedFragment = createAndEnrichFragment(content, startOffset, endOffset, fragment);
+                Fragment mergedFragment = createAndEnrichFragment(content, start, end, fragment);
 
-                if(!mergedFragments.isEmpty()) {
+                if (!mergedFragments.isEmpty()) {
                     Fragment lastAddedFragment = mergedFragments.get(mergedFragments.size() - 1);
                     mergedFragment.getTerms().addAll(lastAddedFragment.getTerms());
                     mergedFragments.remove(lastAddedFragment);
                 }
                 mergedFragments.add(mergedFragment);
-            }
-            else {
-                startOffset = fragment.getStartOffset();
-                endOffset = fragment.getEndOffset();
+            } else {
+                start = fragment.getStartOffset();
+                end = fragment.getEndOffset();
                 fragment.setContentLength(content.length());
 
                 mergedFragments.add(fragment);
@@ -206,13 +205,13 @@ public class HighlighterService {
         List<Fragment> finalFragments = new ArrayList<>();
 
         Set<Fragment> deletedFragments = new HashSet<>();
-        for(int i = 0; i < fragments.size(); i++) {
+        for (int i = 0; i < fragments.size(); i++) {
             Fragment fragment = fragments.get(i);
             Set<String> fragmentTerms = new HashSet<>(fragment.getTerms());
             Set<String> copyOfFragmentTerms = new HashSet<>(fragment.getTerms());
 
-            for(int j = 0; j < fragments.size(); j++) {
-                if(j != i && !deletedFragments.contains(fragments.get(j))) {
+            for (int j = 0; j < fragments.size(); j++) {
+                if (j != i && !deletedFragments.contains(fragments.get(j))) {
                     Fragment secondTempFragments = fragments.get(j);
                     for (String term : fragmentTerms) {
                         if (secondTempFragments.getTerms().contains(term)) {
@@ -222,7 +221,7 @@ public class HighlighterService {
                 }
             }
 
-            if(copyOfFragmentTerms.isEmpty()) {
+            if (copyOfFragmentTerms.isEmpty()) {
                 deletedFragments.add(fragment);
             } else {
                 finalFragments.add(fragment);
@@ -249,7 +248,7 @@ public class HighlighterService {
         List<String> words = new ArrayList<>(firstWords);
         words.addAll(lastWords);
 
-        for(String word:words) {
+        for (String word : words) {
             TokenStream tokenStream = new RomanianAnalyzerWithASCIIFolding().tokenStream(null, new StringReader(word));
             CharTermAttribute charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);
 
@@ -257,7 +256,7 @@ public class HighlighterService {
 
             String termAttribute = charTermAttribute.toString();
 
-            if(clauses.contains(termAttribute)){
+            if (clauses.contains(termAttribute)) {
                 fragment.getTerms().add(termAttribute);
             }
             tokenStream.close();
@@ -280,12 +279,12 @@ public class HighlighterService {
         fragment.setEndOffset(end);
     }
 
-    private List<String> getFirstWordsOfFragmentsWindow(String content, int startOffset){
+    private List<String> getFirstWordsOfFragmentsWindow(String content, int startOffset) {
         List<String> beginWords = Arrays.asList(content.substring(0, startOffset).trim().split(SPACE_STRING));
         return beginWords.subList(Math.max(0, beginWords.size() - Constants.CONTEXT_WINDOW_LENGTH), beginWords.size());
     }
 
-    private List<String> getLastWordOfFragmentsWindow(String content, int endOffset){
+    private List<String> getLastWordOfFragmentsWindow(String content, int endOffset) {
         List<String> endWords = Arrays.asList(content.substring(endOffset).trim().split(SPACE_STRING));
         return endWords.subList(0, Math.min(Constants.CONTEXT_WINDOW_LENGTH, endWords.size()));
     }
@@ -293,7 +292,7 @@ public class HighlighterService {
     private Query initQuery(String searchQuery) {
         QueryParser queryParser = new QueryParser(Constants.CONTENT, new RomanianAnalyzerWithASCIIFolding());
         try {
-            return  queryParser.parse(searchQuery);
+            return queryParser.parse(searchQuery);
         } catch (ParseException e) {
             LOGGER.error(ERROR_WHILE_PARSING_THE_QUERY + e);
         }
@@ -301,7 +300,7 @@ public class HighlighterService {
     }
 
     private List<String> extractClauses(Query query) {
-        if(Objects.nonNull(query)) {
+        if (Objects.nonNull(query)) {
             return Arrays.asList(query.toString().replace(Constants.CONTENT.toLowerCase() + COLON, EMPTY_STRING)
                     .split(SPACE_STRING));
         }
@@ -326,7 +325,7 @@ public class HighlighterService {
         Map<String, Integer> results = new HashMap<>();
         Map<String, Integer> positions = new HashMap<>();
 
-        for (String word : fragment.getText().split(" ")) {
+        for (String word : fragment.getText().split(SPACE_STRING)) {
             TokenStream tokenStream = new RomanianAnalyzerWithASCIIFolding().tokenStream(null, new StringReader(word));
             OffsetAttribute offsetAttribute = tokenStream.addAttribute(OffsetAttribute.class);
             CharTermAttribute charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);
@@ -336,24 +335,24 @@ public class HighlighterService {
             int startOffset = offsetAttribute.startOffset();
             int endOffset = offsetAttribute.endOffset();
 
-            if(clauses.contains(term)) {
-                tokens.add(new Token(term, startOffset, endOffset,position));
+            if (clauses.contains(term)) {
+                tokens.add(new Token(term, startOffset, endOffset, position));
             }
 
             position++;
             tokenStream.close();
         }
 
-        for(Token token:tokens) {
+        for (Token token : tokens) {
             int distance = 0;
-            for(Token token1:tokens) {
+            for (Token token1 : tokens) {
                 distance += Math.abs(token1.getPosition() - token.getPosition());
             }
 
             results.putIfAbsent(token.getToken(), distance);
             positions.putIfAbsent(token.getToken(), token.getPosition());
 
-            if(results.get(token.getToken()) > distance) {
+            if (results.get(token.getToken()) > distance) {
                 results.put(token.getToken(), distance);
                 positions.put(token.getToken(), token.getPosition());
             }
